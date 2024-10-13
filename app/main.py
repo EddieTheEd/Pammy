@@ -2,19 +2,23 @@ import json
 import sys
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QLineEdit, QMessageBox, QListWidget, QDialog, QListWidgetItem, QPushButton  # Ensure QPushButton is imported
+    QLineEdit, QMessageBox, QListWidget, QDialog, QListWidgetItem, QPushButton, QDateTimeEdit
 )
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QDateTime
+
 
 class TaskManager(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle('Task Manager')
+        self.setWindowTitle('Pammy')
         self.setGeometry(100, 100, 600, 400)
         
         self.layout = QVBoxLayout()
         self.tasks_layout = QHBoxLayout()
         
+        self.no_tasks_label = QLabel("No tasks yet.<br>Make one by pressing Enter.")
+        self.no_tasks_label.setAlignment(Qt.AlignCenter)
+        self.layout.addWidget(self.no_tasks_label)
         self.layout.addLayout(self.tasks_layout)
         
         self.setLayout(self.layout)
@@ -22,7 +26,20 @@ class TaskManager(QWidget):
         self.installEventFilter(self)
         
         self.load_tasks()
-    
+
+    def eventFilter(self, obj, event):
+        if event.type() == event.KeyPress:
+            if event.key() == Qt.Key_Return:
+                self.show_add_task_dialog()
+                return True
+            elif event.key() == Qt.Key_Delete:
+                if hasattr(self, 'selected_task'):
+                    self.delete_task()
+                    return True
+            elif event.key() == Qt.Key_W and event.modifiers() == Qt.ControlModifier:
+                self.close()  # Close the application on 'Ctrl + W'
+                return True
+        return super().eventFilter(obj, event)
 
     def load_tasks(self):
         for i in reversed(range(self.tasks_layout.count())):
@@ -38,6 +55,11 @@ class TaskManager(QWidget):
                 else:
                     self.tasks = {}
 
+                if not self.tasks:
+                    self.no_tasks_label.show()
+                else:
+                    self.no_tasks_label.hide()
+
                 for group, task_list in self.tasks.items():
                     group_layout = QVBoxLayout()
                     group_label = QLabel(group)
@@ -49,8 +71,9 @@ class TaskManager(QWidget):
                     task_list_widget.installEventFilter(self)
 
                     for task in task_list:
-                        task_display = f"{task['taskname']} (Due: {task['duedate']})"
-                        item = QListWidgetItem(task_display)
+                        task_display = f"{task['taskname']}: {task['description']} (Due: {task['duedate']}) (Set: {task['setdate']})"
+                        item = QListWidgetItem()
+                        item.setText(task_display)
                         item.setData(Qt.UserRole, task)
                         task_list_widget.addItem(item)
 
@@ -62,7 +85,7 @@ class TaskManager(QWidget):
                     self.tasks_layout.addWidget(group_container)
         except FileNotFoundError:
             self.tasks = {}
-
+            self.no_tasks_label.show()
 
     def show_add_task_dialog(self):
         dialog = AddTaskDialog(self)
@@ -83,16 +106,6 @@ class TaskManager(QWidget):
     def on_task_selected(self, item):
         self.selected_task = item
         self.selected_group = item.listWidget().objectName()
-
-    def eventFilter(self, obj, event):
-        if event.type() == event.KeyPress and event.key() == Qt.Key_Return:
-            self.show_add_task_dialog()
-            return True
-        elif event.type() == event.KeyPress and event.key() == Qt.Key_Delete:
-            if hasattr(self, 'selected_task'):
-                self.delete_task()
-                return True
-        return super().eventFilter(obj, event)
 
     def delete_task(self):
         task = self.selected_task.data(Qt.UserRole)
@@ -125,11 +138,11 @@ class AddTaskDialog(QDialog):
         self.group_input = QLineEdit(self)
         self.group_input.setPlaceholderText('Group')
         
-        self.set_date_input = QLineEdit(self)
-        self.set_date_input.setPlaceholderText('Set Date (YYYY-MM-DD)')
+        self.set_date_input = QDateTimeEdit(self)
+        self.set_date_input.setDateTime(QDateTime.currentDateTime())
+        self.set_date_input.hide()
         
-        self.due_date_input = QLineEdit(self)
-        self.due_date_input.setPlaceholderText('Due Date (YYYY-MM-DD)')
+        self.due_date_input = QDateTimeEdit(self)
         
         self.submit_button = QPushButton('Add Task')
         self.submit_button.clicked.connect(self.add_task)
@@ -148,8 +161,8 @@ class AddTaskDialog(QDialog):
             "taskname": self.taskname_input.text(),
             "description": self.description_input.text(),
             "group": self.group_input.text(),
-            "setdate": self.set_date_input.text(),
-            "duedate": self.due_date_input.text()
+            "setdate": self.set_date_input.dateTime().toString("yyyy-MM-dd HH:mm:ss"),
+            "duedate": self.due_date_input.dateTime().toString("yyyy-MM-dd HH:mm:ss") 
         }
         
         if all(task.values()):
