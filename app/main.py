@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import (
     QLineEdit, QMessageBox, QListWidget, QDialog, QListWidgetItem, QPushButton, QDateTimeEdit
 )
 from PyQt5.QtCore import Qt, QDateTime
+from PyQt5.QtGui import QIcon
 
 
 class TaskManager(QWidget):
@@ -24,6 +25,8 @@ class TaskManager(QWidget):
         self.setLayout(self.layout)
 
         self.installEventFilter(self)
+
+        self.setWindowIcon(QIcon('pammy.ico'))
         
         self.load_tasks()
 
@@ -37,7 +40,7 @@ class TaskManager(QWidget):
                     self.delete_task()
                     return True
             elif event.key() == Qt.Key_W and event.modifiers() == Qt.ControlModifier:
-                self.close()  # Close the application on 'Ctrl + W'
+                self.close()
                 return True
         return super().eventFilter(obj, event)
 
@@ -155,6 +158,8 @@ class AddTaskDialog(QDialog):
         self.layout.addWidget(self.submit_button)
         
         self.setLayout(self.layout)
+
+        self.setWindowIcon(QIcon('pammy.ico'))
 
     def add_task(self):
         task = {
