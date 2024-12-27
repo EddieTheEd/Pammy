@@ -45,6 +45,11 @@ class TaskManager(QWidget):
             elif event.key() == Qt.Key_W and event.modifiers() == Qt.ControlModifier:
                 self.close()
                 return True
+            elif event.key() == Qt.Key_Down:  # Handle down arrow key press
+                # Check if the list widget has only one item
+                if obj.count() == 1:
+                    obj.setCurrentRow(0)  # Select the only task
+                    return True
         return super().eventFilter(obj, event)
 
     def load_tasks(self):
