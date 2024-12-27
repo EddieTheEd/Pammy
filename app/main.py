@@ -2,7 +2,8 @@ import json
 import sys
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QLineEdit, QMessageBox, QListWidget, QDialog, QListWidgetItem, QPushButton, QDateTimeEdit
+    QLineEdit, QMessageBox, QListWidget, QDialog, QListWidgetItem, QPushButton, QDateTimeEdit,
+    QDesktopWidget, QCheckBox, QSizePolicy
 )
 from PyQt5.QtCore import Qt, QDateTime
 from PyQt5.QtGui import QIcon
@@ -27,11 +28,13 @@ class TaskManager(QWidget):
         self.installEventFilter(self)
 
         self.setWindowIcon(QIcon('pammy.ico'))
+
+        self.showMaximized()
         
         self.load_tasks()
 
     def eventFilter(self, obj, event):
-        if event.type() == event.KeyPress:
+        if isinstance(obj, QListWidget) and event.type() == event.KeyPress:
             if event.key() == Qt.Key_Return:
                 self.show_add_task_dialog()
                 return True
@@ -70,7 +73,8 @@ class TaskManager(QWidget):
 
                     task_list_widget = QListWidget()
                     task_list_widget.setObjectName(group)
-                    task_list_widget.itemPressed.connect(self.on_task_selected)
+                    task_list_widget.selectionModel().selectionChanged.connect(self.on_task_selected)
+                    self.selected_task_list_widget = task_list_widget
                     task_list_widget.installEventFilter(self)
 
                     for task in task_list:
@@ -106,15 +110,19 @@ class TaskManager(QWidget):
         
         self.load_tasks()
 
-    def on_task_selected(self, item):
-        self.selected_task = item
-        self.selected_group = item.listWidget().objectName()
+    def on_task_selected(self, selected):
+        selected_index = selected.indexes()[0] if selected.indexes() else None
+        if selected_index:
+            self.selected_task = self.selected_task_list_widget.itemFromIndex(selected_index)
+            self.selected_group = self.selected_task_list_widget.objectName()
 
     def delete_task(self):
         task = self.selected_task.data(Qt.UserRole)
         group = self.selected_group
 
-        self.tasks[group] = [t for t in self.tasks[group] if t['taskname'] != task['taskname']]
+        self.load_tasks()
+        
+        self.tasks[group].remove(task)
 
         if not self.tasks[group]:
             del self.tasks[group]
@@ -131,6 +139,8 @@ class AddTaskDialog(QDialog):
         self.setGeometry(150, 150, 300, 200)
         
         self.layout = QVBoxLayout()
+
+        self.center_on_screen()
         
         self.taskname_input = QLineEdit(self)
         self.taskname_input.setPlaceholderText('Task Name')
@@ -144,31 +154,64 @@ class AddTaskDialog(QDialog):
         self.set_date_input = QDateTimeEdit(self)
         self.set_date_input.setDateTime(QDateTime.currentDateTime())
         self.set_date_input.hide()
+
+        self.due_date = QCheckBox('Due Date? (Press Space)')
+
+        self.due_date_label = QLabel('Due Date:')
+        self.due_date_label.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
         
         self.due_date_input = QDateTimeEdit(self)
         
         self.submit_button = QPushButton('Add Task')
         self.submit_button.clicked.connect(self.add_task)
-        
+
+        self.due_date_layout = QHBoxLayout()
+        self.due_date_layout.addWidget(self.due_date_label)
+        self.due_date_layout.addWidget(self.due_date_input)
+
         self.layout.addWidget(self.taskname_input)
         self.layout.addWidget(self.description_input)
         self.layout.addWidget(self.group_input)
         self.layout.addWidget(self.set_date_input)
-        self.layout.addWidget(self.due_date_input)
+        self.layout.addWidget(self.due_date)
+        self.layout.addLayout(self.due_date_layout)
         self.layout.addWidget(self.submit_button)
+
+        self.due_date.setFocusPolicy(Qt.TabFocus)
         
         self.setLayout(self.layout)
 
         self.setWindowIcon(QIcon('pammy.ico'))
 
+        self.setTabOrder(self.taskname_input, self.description_input)
+        self.setTabOrder(self.description_input, self.group_input)
+        self.setTabOrder(self.group_input, self.due_date)
+        self.setTabOrder(self.due_date, self.due_date_input)
+        self.setTabOrder(self.due_date_input, self.submit_button)
+
+    def center_on_screen(self):
+        screen = QDesktopWidget().availableGeometry().center()
+        frame_geometry = self.frameGeometry()
+        frame_geometry.moveCenter(screen)
+        self.move(frame_geometry.topLeft())
+
     def add_task(self):
-        task = {
-            "taskname": self.taskname_input.text(),
-            "description": self.description_input.text(),
-            "group": self.group_input.text(),
-            "setdate": self.set_date_input.dateTime().toString("yyyy-MM-dd HH:mm:ss"),
-            "duedate": self.due_date_input.dateTime().toString("yyyy-MM-dd HH:mm:ss") 
-        }
+        if self.due_date.isChecked():
+            task = {
+                "taskname": self.taskname_input.text(),
+                "description": self.description_input.text(),
+                "group": self.group_input.text(),
+                "setdate": self.set_date_input.dateTime().toString("yyyy-MM-dd HH:mm:ss"),
+                "duedate": 'N/A'
+            }
+        else:
+            task = {
+                "taskname": self.taskname_input.text(),
+                "description": self.description_input.text(),
+                "group": self.group_input.text(),
+                "setdate": self.set_date_input.dateTime().toString("yyyy-MM-dd HH:mm:ss"),
+                "duedate": self.due_date_input.dateTime().toString("yyyy-MM-dd HH:mm:ss") 
+            }
         
         if all(task.values()):
             self.parent().add_task(task)
