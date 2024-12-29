@@ -1,2 +1,2 @@
 # Pammy
-Hammy but Python fr ongly dslsfhkortnyklr snolhglu
+Yet another task manager. 3rd times the charm?
