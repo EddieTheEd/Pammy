@@ -8,7 +8,6 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QDateTime
 from PyQt5.QtGui import QIcon
 
-
 class TaskManager(QWidget):
     def __init__(self):
         super().__init__()
@@ -178,7 +177,9 @@ class AddTaskDialog(QDialog):
         self.due_date_label = QLabel('Due Date:')
         self.due_date_label.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
         
-        self.due_date_input = QDateTimeEdit(self)
+        self.due_date_input = QDateTimeEdit(QDateTime.currentDateTime())
+        self.due_date_input.setDisplayFormat("dd/MM/yyyy HH:mm")
+        self.due_date_input.setCalendarPopup(True)
         
         self.submit_button = QPushButton('Add Task')
         self.submit_button.clicked.connect(self.add_task)
@@ -219,7 +220,7 @@ class AddTaskDialog(QDialog):
                 "taskname": self.taskname_input.text(),
                 "description": self.description_input.text(),
                 "group": self.group_input.text(),
-                "setdate": self.set_date_input.dateTime().toString("yyyy-MM-dd HH:mm:ss"),
+                "setdate": self.set_date_input.dateTime().toString("dd/MM/yyyy HH:mm:ss"),
                 "duedate": 'N/A'
             }
         else:
@@ -227,8 +228,8 @@ class AddTaskDialog(QDialog):
                 "taskname": self.taskname_input.text(),
                 "description": self.description_input.text(),
                 "group": self.group_input.text(),
-                "setdate": self.set_date_input.dateTime().toString("yyyy-MM-dd HH:mm:ss"),
-                "duedate": self.due_date_input.dateTime().toString("yyyy-MM-dd HH:mm:ss") 
+                "setdate": self.set_date_input.dateTime().toString("dd/MM/yyyy HH:mm:ss"),
+                "duedate": self.due_date_input.dateTime().toString("dd/MM/yyyy HH:mm:ss") 
             }
         
         if all(task.values()):
